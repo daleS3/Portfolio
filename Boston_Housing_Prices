@@ -40,4 +40,4 @@ print(a)
 y_test #Appears to be close
 
 #Observing MSE
-np.mean((a-y_test)**2) #The MSE around 25, which is close.
+np.mean((a-y_test)**2) #The MSE is around 25, which is close.
