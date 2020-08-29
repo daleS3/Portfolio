@@ -1,0 +1,42 @@
+#Title: Linear Regression: Predicting Housing Prices in Boston, MA
+#Script Author: Dale J. Saunders
+#IDE: PyCharm
+
+#Importing
+import pandas as pd
+import numpy as np
+from sklearn import linear_model
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_boston
+
+#Reviewing
+bos_prices = load_boston()
+print(bos_prices)
+
+#Creating Data Frames
+df_x = pd.DataFrame(bos_prices.data,columns=bos_prices.feature_names)
+df_y = pd.DataFrame(bos_prices.target)
+df_x.describe()
+df_y.describe()
+
+#Setting up the model
+reg = linear_model.LinearRegression()
+
+#Cross Validating
+x_train, x_test, y_train, y_test = train_test_split(df_x,df_y,test_size=0.2,random_state=4)
+
+#Training the model
+reg.fit(x_train,y_train)
+
+#Reviewing testing coefficients
+reg.coef_
+
+#Creating a prediction model
+a = reg.predict(x_test)
+
+#Comparing trained and predicted results
+print(a)
+y_test #Appears to be close
+
+#Observing MSE
+np.mean((a-y_test)**2) #The MSE around 25, which is close.
