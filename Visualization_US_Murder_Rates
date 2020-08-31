@@ -1,0 +1,97 @@
+---
+title: "Visualization: Murder Rates by State"
+author: "Dale J Saunders"
+date: "8/31/2020"
+scripting: "R"
+source: HarvadX
+---
+  
+#Library
+library(dslabs)
+library(ggthemes)
+library(ggrepel)
+
+#Assigning data
+ p <- murders %>% ggplot() 
+ 
+#Creating plot foundation
+ p <- p + geom_point(aes(x = population/10^6,y = total, size = 3)) 
+ p
+ 
+#Adding text
+ p <- p + geom_text(aes(population/10^6, total, label = abb),nudge_x = 1) 
+ p
+ 
+#Redefining p to define the mapping within the ggplot function
+ p <- murders %>% ggplot(aes(population/10^6, total, label = abb))
+ p <- p + geom_point(size = 3) + 
+    geom_text(nudge_x = 0.075) #adjusted nudge for log scale
+ p
+ 
+#Adding scales
+ p <- p + scale_x_log10() +
+  scale_y_log10()
+ p
+
+#Labeling
+ p <- p + xlab("Pop. in millions (log scale)") +
+ ylab("Total murders (log scale)") +
+ ggtitle("US Gun Murders 2010")
+ p
+
+#Adjusting the layout without points 
+ p <-  murders %>% ggplot(aes(population/10^6, total, label = abb)) +
+    geom_text(nudge_x = 0.075) + 
+   scale_x_log10() +
+   scale_y_log10() +
+   xlab("Pop. in millions (log scale)") +
+   ylab("Total murders (log scale)") +
+   ggtitle("US Gun Murders 2010")
+ 
+ p #points removed
+ 
+
+#Adding blue points
+ p <- p + geom_point(size = 3, color = "blue")
+ p
+
+#Assigning colored point by region
+ p <- p + geom_point(aes(col=region), size = 3)
+ p
+ 
+#Adding a line that represents the US average (y = x*r)
+ r <- murders %>% summarize(rate = sum(total) / sum(population) * 10^6) %>% .$rate #avg calc
+ p + geom_point(aes(col=region), size = 3) + 
+   geom_abline(intercept = log10(r)) #did not add line because we will be refining it
+ p
+ 
+#Cleaning up the line's format
+ p <- p + geom_abline(intercept = log10(r), lty = 2, color = "darkgrey") + 
+   geom_point(aes(col=region), size = 3) #abline goes before geom points
+ p
+
+#Capitalizing "region"
+ p <- p + scale_color_discrete(name = "Region")
+ p
+
+#Adding in economist theme
+ p <- p + theme_economist()
+ p
+
+#Adjusting the graph's points and labels
+ ##Defining Slope
+ r <- murders %>% + 
+   summarize(rate = sum(total) / sum(population)*10^6) %>% +
+   .$rate
+ ##Plotting
+ murders %>% ggplot(aes(population/10^6, total, label = abb)) +
+   geom_abline(intercept = log10(r), lty = 2, color = "darkgrey") +
+   geom_point(aes(col=region), size = 3) +
+   geom_text_repel()+
+   scale_x_log10()+
+   scale_y_log10()+
+   xlab("Pop. in millions (log scale)")+
+   ylab("Total murders (log scale)")+
+   ggtitle("Total Murders in US 2010") +
+   scale_color_discrete(name = "Region") +
+   theme_economist()
