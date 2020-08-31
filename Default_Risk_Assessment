@@ -1,0 +1,175 @@
+---
+title: "Default_Risk_Assessment"
+author: "Dale J Saunders"
+date: "8/30/2020"
+output: html_document
+source data: https://www.datacamp.com/courses/introduction-to-credit-risk-modeling-in-r
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Examining Credit Risk
+
+##Importing Data
+```{r loan_data}
+loan_data <- readRDS('~/Downloads/loan_data_ch1.rds')
+summary(loan_data)
+```
+##Exploring Data
+```{r loan_data}
+library(gmodels)
+CrossTable(loan_data$loan_status) #88.9% paid and 11.1% defaulted
+
+CrossTable(loan_data$home_ownership) #renters and mortgage holders have the highest probability of defaulting
+
+ct.ownership <- CrossTable(loan_data$home_ownership, loan_data$loan_status, prop.r = TRUE, 
+           prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE)
+
+ct.grade <- CrossTable(loan_data$grade, loan_data$loan_status, prop.r = TRUE, 
+           prop.c = FALSE, prop.t = FALSE, prop.chisq = FALSE) #There's a linear relationship
+
+default.data <- ct.grade$prop.row[,2]
+
+position <- default.data / 2
+text(x = barplot(default.data),labels=names(default.data), y = position)
+title("Default Probability") #defaults increase, while grades decrease. Confirmed to be linear
+
+prob.difference <- diff(default.data)
+plot(prob.difference, type = "b", xlab = "Grades", ylab = "Changes in Default Probability",xaxt="n") 
+axis(1, at=1:6, labels=names(prob.difference))
+title("Differences in Probability of Default") #Large spike once a property reaches E.
+```
+##Removing Missing Data
+```{r loan_data}
+summary(loan_data) #Nas in int_rate and emp_length
+
+head(loan_data[3:5], n = 10) 
+
+###Option 1: last observation carried forward ('locf')
+library(xts) 
+data_locf <- na.locf(loan_data)
+head(data_locf[3:5], n = 10)
+
+###Option 2: next observation carried backwards ("nocb")
+data_nocb <- na.locf(loan_data, fromLast = TRUE)
+head(data_nocb[3:5], n = 10)
+
+###Option 3: Missing Not At Random ("MNAR") -- SUPERIOR METHOD
+loan_data$int_bin <- rep(NA, length(loan_data$int_rate))
+
+loan_data$int_bin[which(loan_data$int_rate <= 7)] <- "0-7"
+loan_data$int_bin[which(loan_data$int_rate > 7 & loan_data$int_rate <= 9)] <- "7-9"
+loan_data$int_bin[which(loan_data$int_rate > 9 & loan_data$int_rate <= 11)] <- "9-11"
+loan_data$int_bin[which(loan_data$int_rate > 11 & loan_data$int_rate <= 13.5)] <- "11-13.5"
+loan_data$int_bin[which(loan_data$int_rate > 13.5)] <- "13.5+"
+loan_data$int_bin[which(is.na(loan_data$int_rate))] <- "Missing"
+loan_data$int_bin <- as.factor(loan_data$int_bin)
+
+plot(loan_data$int_bin)
+
+loan_data$emp_bin <- rep(NA, length(loan_data$emp_length))
+
+loan_data$emp_bin[which(loan_data$emp_length <= 1)] <- "0-1"
+loan_data$emp_bin[which(loan_data$emp_length > 1 & loan_data$emp_length <= 3)] <- "1-3"
+loan_data$emp_bin[which(loan_data$emp_length > 3 & loan_data$emp_length <= 7)] <- "3-7"
+loan_data$emp_bin[which(loan_data$emp_length > 7)] <- "7+"
+loan_data$emp_bin[which(is.na(loan_data$emp_length))] <- "Missing"
+loan_data$emp_bin <- as.factor(loan_data$emp_bin)
+
+plot(loan_data$emp_bin)
+
+loan_data$int_rate <- NULL
+loan_data$emp_length <- NULL
+
+summary(loan_data) #NAs are removed
+```
+##Removing Missing Data
+```{r loan_data}
+summary(loan_data) #There are possible outliers in annual income and age
+
+plot(loan_data$annual_inc, ylab = "Annual Income") #outliers between 2mm-6mm
+
+plot(loan_data$age, ylab = "Age")
+max(loan_data$age) #94
+
+index_highincome <- which(loan_data$annual_inc > 10^6)
+index_highage <- which(loan_data$age > 100)
+
+loan_data <- loan_data[-index_highincome,-index_highage]
+```
+##Cross Validation
+```{r loan_data}
+train <- loan_data[1:20000,]
+test <- loan_data[20000:29092,]
+
+glm_age <- glm(loan_status ~ age, family = "binomial", data = train) #predicting loan status on age
+glm_age
+
+glm_age$coefficients
+
+glm_all <- glm(loan_status ~ ., family = "binomial", data = train)
+
+summary(glm_all)
+
+glm_final <- glm(loan_status ~ loan_amnt + grade + annual_inc + int_bin + emp_bin, family = "binomial", data = train) #Best Model
+
+summary(glm_final)
+```
+##Testing
+```{r loan_data}
+glm_age$coefficients
+
+x <- -1.905870516+0*(-0.009138289) #Gathered from glm_age$coefficients, age = 0
+
+default.prob <- 1 /exp(-x) #Base line, 14.5% chance
+default.prob
+
+y <- (-1.905870516+25*(-0.009138289)) #25 yo, 11.8% chance
+
+default.prob.25 <- 1 /exp(-y)
+default.prob.25
+
+z <- (-1.905870516+26*(-0.009138289)) #26 yo, 
+default.prob.26 <- 1 / exp(-z)    
+default.prob.26
+```
+##Predicting
+```{r loan_data}
+test[1,] 
+
+predict_1 <- predict(glm_final, newdata = test[1,], type = "response") #Mortgaged, did not default
+predict_1 #2% chance of defaulting
+
+test[2,]
+
+predict_2 <- predict(glm_final, newdata = test[9,], type = "response") #Renter, did not default
+predict_2 #8.8% chance of defaulting 
+
+predict_all <- predict(glm_final, newdata = test, type = "response") #Viewing all
+head(predict_all)
+```
+##Evaluation
+```{r loan_data}
+cutoff <- 1.00 
+
+predict_cutoff_1.0 <- ifelse(predict_all > cutoff,1,0)
+table(test$loan_status,predict_cutoff_1.0) 
+Accuracity_1.0 <- 7929 / 9084 #from table
+Accuracity_1.0 #87.2% repayment rate
+
+cutoff <- 0.05
+
+predict_cutoff_0.05 <- ifelse(predict_all > cutoff,1,0)
+table(test$loan_status,predict_cutoff_0.05) 
+Accuracity_0.05 <- (538 + 1112) / 9084 #from table
+Accuracity_0.05 #18.1 Repayment rate!
+
+cutoff <- 0.15
+
+predict_cutoff_0.15 <- ifelse(predict_all > cutoff,1,0)
+table(test$loan_status,predict_cutoff_0.15)
+Accuracity_0.15 <- (6118 + 427) / 9084
+Accuracity_0.15 #72.0% repayment
+```
