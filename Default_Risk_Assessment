@@ -3,6 +3,7 @@ title: "Default_Risk_Assessment"
 author: "Dale J Saunders"
 date: "8/30/2020"
 output: html_document
+scripting language: R
 source data: https://www.datacamp.com/courses/introduction-to-credit-risk-modeling-in-r
 ---
 
