@@ -19,5 +19,5 @@ data source: "http://www.usa.com/"
     geom_density() + xlab("Per Capita Income in 1000s") + 
     ggtitle('2010 Per Capita Income by MSA')
   
- ###This shows the distributions of median per capita incomes of zip codes within the Los Angeles and
+ ###This shows the distributions of the median per capita incomes per zip code within the Los Angeles and
   ###San Francisco Metropolitan Regions in 2010. 
