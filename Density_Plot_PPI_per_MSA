@@ -1,0 +1,23 @@
+---
+title: "Density Plot: LA and SF MSA Per Capita Incomes by Zip Code"
+author: "Dale J Saunders"
+date: "9/4/2020"
+scripting: "R"
+data source: "http://www.usa.com/"
+---
+  
+  ##Libraries:
+  library(readr)
+
+  ##Dataframe
+  df <- read_csv("Desktop/LA_SF_Incomes.csv")
+
+  df <- df %>% mutate(PPI_1k = PPI/1000)
+  
+  ##Histogram of LA PPI_log
+  ggplot(df, aes(x=PPI_1k, group=MSA, fill=MSA, alpha=0.5)) + 
+    geom_density() + xlab("Per Capita Income in 1000s") + 
+    ggtitle('2010 Per Capita Income by MSA')
+  
+ ###This shows the distributions of median per capita incomes of zip codes within the Los Angeles and
+  ###San Francisco Metropolitan Regions in 2010. 
