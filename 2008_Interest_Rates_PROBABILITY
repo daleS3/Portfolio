@@ -1,0 +1,126 @@
+---
+title: "2008_Interest_Rates_PROBABILITY"
+author: "Dale J Saunders"
+date: "9/5/2020"
+output: html_document
+script language: "R"
+note: "This excerise was derived from my HarvardX course"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Library
+```{r setup}
+library(tidyverse)
+```
+
+##Creating the sampling model
+```{r sample}
+n <- 1000
+loss_per_foreclosure <- -200000
+p <- 0.02
+defaults <- sample(c(0,1), n, prob = c(1-p,p),  replace = TRUE)
+sum(defaults * loss_per_foreclosure)
+##Running the code multiple times, we will get a different answer. That's because it is a probability of happening, not a definite. 
+```
+
+##Creating a Monte Carlo Simulation
+```{r replicate}
+B <- 10000
+losses <- replicate(B, {
+  defaults <- sample(c(0,1), n, prob = c(1-p,p), replace = TRUE)
+  sum(defaults * loss_per_foreclosure)
+})
+
+##Viewing the distribution
+data.frame(losses_in_millions = losses/10^6) %>% ggplot(aes(losses_in_millions)) + geom_histogram(binwidth = 0.6, col = "black")
+##The distribution is approx. normal. A Monte Carlo simulation is not necessary. 
+
+##CLT tells us that our losses are a sum of independent draws, makes the dist. approx. normal, given the following respective value and stand. dev.
+
+n*(p*loss_per_foreclosure + (1-p)*0)
+
+sqrt(n)*abs(loss_per_foreclosure)*sqrt(p*(1-p))
+
+##We are setting an interest rate that will guarantee we will break even by adding quantity x to each loan, so the expected value is zero (breaking even) = lp + x(1-p) = 0
+
+##Calculating x
+- loss_per_foreclosure*p/(1-p)
+##This is an interest rate of about 2% (p = 0.02)
+
+##Chances of default are about 50%, which could be too high. We want our chances of losing money to be 1 out of 100 [Pr(S<0) = 0.01]. Given that S is approx. normal, the expected value formula is {lp+x(1-p)}n, and the standard error is abs(x-l)*sqrt(np(1-p)). 
+
+##We are going add and subtract the same quantities on both side of the event, so we end up with normal random variable on the left, which will allow us to write down an equation with only x as an unknown. Reference Prob with Z. It will boil down to a qnorm function of as seen below [Pr(Z<= z) = 0.01]
+
+qnorm(0.01)
+
+##Now we can solve for x
+l <- loss_per_foreclosure
+z <- qnorm(0.01)
+x <- -l*(n*p - z*sqrt(n*p*(1-p)))/(n*(1-p)+ z*sqrt(n*p*(1-p)))
+
+x ##Interest rate around 3%, provided z = -2.33
+
+##Expected profit is 
+loss_per_foreclosure*p + x*(1-p)
+##approx $2mm since the measurement is per 1k.
+
+##Running a Monte Carlo sim. to get the theoretical approximation.
+B <- 10000
+profit <- replicate(B, {
+  draws <- sample( c(x, loss_per_foreclosure), n, prob = c(1-p,p), replace = TRUE)
+  sum(draws)
+})
+mean(profit) #Approx. 2mm (confirmed)
+
+mean(profit<0) #Probability of profit less than zero is about 1%
+```
+
+##What if we increase the number of loans
+```{r law of large numbers}
+##Observing the increase of loans
+r <- 0.05 ## interest rate
+x <- r*180000
+loss_per_foreclosure*p + x * (1-p)
+##Positive value of $X per loan
+
+##Determining a number of loans that can minimize our probability of loss
+z <- qnorm(0.01)
+n <- ceiling( (z^2*(x-l)^2*p*(1-p))/(l*p + x*(1-p))^2)
+n #amount of loans needed so our probability is 1%
+
+n*(loss_per_foreclosure*p + x * (1-p))
+##Amount we are expected to earn
+
+p <- 0.04
+x <- 0.05*180000
+profit <- replicate( B, {
+  draws <- sample( c(x, loss_per_foreclosure), n, prob=c(1-p,p), replace = TRUE)
+  sum(draws)
+  })
+
+##Amount confirmed
+
+mean(profit<0) #same as before, about 1%
+##This assumption is based on the X's are independent of each other. However, this was not the case in 2008. Each default was correlated.
+
+##Constructing a more realistic Monte Carlo sim. where a global event effects everyone (all x's)
+
+p <- 0.04
+x <- 0.05*180000
+profit <- replicate(B, {
+  new_p <- 0.04 + sample(seq(-0.01, 0.01, length = 100), 1)
+  draws <- sample( c(x, loss_per_foreclosure), n, prob = c(1-new_p, new_p), replace = TRUE)
+  sum(draws)
+})
+
+mean(profit) ##Expected profit is larger at 14mm
+
+mean(profit<0) ##increases significantly to 35%. This is what really happened in 2008.
+
+mean(profit < -10^7) ##losing 10mm increases to 24%
+
+hist(profit) #our random variable is not normally distributed and x's are not independent 
+```
